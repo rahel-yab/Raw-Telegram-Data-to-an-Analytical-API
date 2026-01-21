@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: fct_messages
+    description: "Central fact table for all scraped telegram messages"
+    columns:
+      - name: message_id
+        description: "Primary key of the message"
+        tests:
+          - unique
+          - not_null
+
+      - name: channel_key
+        description: "Foreign key to dim_channels"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_channels')
+              field: channel_key
+
+      - name: has_image
+        description: "Boolean flag for media content"
+        tests:
+          - not_null
+
+  - name: dim_channels
+    description: "Dimension table for telegram channels"
+    columns:
+      - name: channel_key
+        tests:
+          - unique
+          - not_null
