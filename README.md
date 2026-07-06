@@ -18,9 +18,9 @@ An end-to-end ELT pipeline that ingests public Telegram messages from Ethiopian 
 1. Extract — `src/scraper.py` (Telethon) scrapes public channels and writes JSON + images to `data/raw/`.
 2. Load — `scripts/load_to_postgres.py` loads raw JSON into Postgres `raw.telegram_messages`.
 3. Transform — `medical_warehouse/` (dbt) builds staging models and marts (star schema).
-4. Enrich — `src/yolo_detect.py` runs YOLOv8 on images and records detections.
+4. Enrich — `scripts/object_detection.py` runs YOLOv8 on images and records detections.
 5. Serve — `api/main.py` (FastAPI) exposes analytical endpoints.
-6. Orchestrate — `pipeline.py` (Dagster) composes ops and schedules runs.
+6. Orchestrate — `pipeline.py` (Dagster) composes the local pipeline run.
 
 ## Repository layout
 
@@ -37,6 +37,23 @@ An end-to-end ELT pipeline that ingests public Telegram messages from Ethiopian 
 ├── .env.example            # Placeholder env vars
 └── requirements.txt
 ```
+
+## Verified local dataset snapshot
+
+These metrics are generated from the local files currently present in `data/`.
+Regenerate them with:
+
+```bash
+python3 scripts/profile_project_metrics.py
+```
+
+- Raw Telegram channels scraped: 2 (`lobelia4cosmetics`, `tikvahpharma`)
+- Raw message records: 200 across 1 date partition (`2026-01-18`)
+- Downloaded image files: 146 (`lobelia4cosmetics`: 100, `tikvahpharma`: 46)
+- dbt models currently defined: 5 (`stg_telegram_messages`, `dim_channels`, `dim_dates`, `fct_messages`, `fct_image_detections`)
+- dbt tests currently defined after parsing: 21, including 2 custom business-rule SQL tests
+- FastAPI analytical endpoints: 4, plus `/health`
+- YOLO detections: run `python3 scripts/object_detection.py --images-dir data/raw/images --output-dir data/processed/detections` to generate `data/processed/detections/detections.csv`; the profiler will then report labeled detections and object categories.
 
 ## Quickstart (local)
 
@@ -92,7 +109,7 @@ dbt docs serve
 7. Run YOLO enrichment:
 
 ```bash
-python src/yolo_detect.py --images-dir data/raw/images --output data/processed/detections.csv
+python scripts/object_detection.py --images-dir data/raw/images --output-dir data/processed/detections --write-db
 ```
 
 8. Start the FastAPI analytical API:
@@ -138,4 +155,3 @@ Contributions are welcome. To contribute:
 2. Open an issue describing the change if it is non-trivial.
 3. Add tests for new functionality (unit tests or dbt tests as appropriate).
 4. Submit a pull request with a clear description and any migration or run instructions.
-
