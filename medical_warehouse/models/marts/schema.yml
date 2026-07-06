@@ -5,7 +5,12 @@ models:
     description: "Central fact table for all scraped telegram messages"
     columns:
       - name: message_id
-        description: "Primary key of the message"
+        description: "Telegram message ID scoped to a channel"
+        tests:
+          - not_null
+
+      - name: message_key
+        description: "Surrogate key for a channel/message pair"
         tests:
           - unique
           - not_null
@@ -15,8 +20,18 @@ models:
         tests:
           - not_null
           - relationships:
-              to: ref('dim_channels')
-              field: channel_key
+              arguments:
+                to: ref('dim_channels')
+                field: channel_key
+
+      - name: date_key
+        description: "Foreign key to dim_dates"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_dates')
+                field: date_key
 
       - name: has_image
         description: "Boolean flag for media content"
@@ -29,4 +44,40 @@ models:
       - name: channel_key
         tests:
           - unique
+          - not_null
+
+  - name: dim_dates
+    description: "Calendar dimension for message dates"
+    columns:
+      - name: date_key
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_image_detections
+    description: "YOLOv8 detections linked back to Telegram messages"
+    columns:
+      - name: detection_key
+        tests:
+          - unique
+          - not_null
+
+      - name: message_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_messages')
+                field: message_key
+
+      - name: channel_key
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_channels')
+                field: channel_key
+
+      - name: object_label
+        tests:
           - not_null
