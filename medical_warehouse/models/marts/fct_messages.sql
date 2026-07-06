@@ -1,6 +1,8 @@
 SELECT
+    MD5(channel_name || '-' || message_id::TEXT) AS message_key,
     message_id,
     MD5(channel_name) AS channel_key,
+    CAST(message_date AS DATE) AS date_key,
     message_date,
     message_text,
     message_length,

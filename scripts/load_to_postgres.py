@@ -1,15 +1,22 @@
 import os
 import json
+import argparse
 import pandas as pd
 from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
 
-# Database connection string
-# format: postgresql://user:password@host:port/dbname
-engine = create_engine('postgresql://admin:password123@localhost:5432/medical_data')
+load_dotenv()
 
-def load_json_to_postgres():
-    # Path to your data lake
-    base_path = 'data/raw/telegram_messages'
+DEFAULT_DSN = os.getenv(
+    "POSTGRES_DSN",
+    "postgresql://admin:password123@localhost:5433/medical_data",
+)
+
+
+def load_json_to_postgres(data_dir: str, database_url: str) -> int:
+    engine = create_engine(database_url)
+    base_path = data_dir
+    total_rows = 0
     
     if not os.path.exists(base_path):
         print(f"Error: The path {base_path} does not exist.")
@@ -52,10 +59,23 @@ def load_json_to_postgres():
                             if_exists='append', 
                             index=False
                         )
-                        print(f"🚀 Loaded {len(df)} rows from {json_file}")
+                        row_count = len(df)
+                        total_rows += row_count
+                        print(f"🚀 Loaded {row_count} rows from {json_file}")
                         
-                    except Exception as e:
-                        print(f"❌ Failed to load {json_file}: {str(e)}")
+                    except Exception as exc:
+                        print(f"❌ Failed to load {json_file}: {str(exc)}")
+
+    return total_rows
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Load raw Telegram JSON files into PostgreSQL.")
+    parser.add_argument("--data-dir", default="data/raw/telegram_messages")
+    parser.add_argument("--database-url", default=DEFAULT_DSN)
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    load_json_to_postgres()
+    args = parse_args()
+    rows_loaded = load_json_to_postgres(args.data_dir, args.database_url)
+    print(f"✅ Finished loading {rows_loaded} total rows.")
