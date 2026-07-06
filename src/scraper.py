@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 from telethon import TelegramClient
@@ -24,7 +25,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-async def scrape_channel(client, channel_username):
+async def scrape_channel(client, channel_username, limit=100):
     try:
         logging.info(f"Scraping channel: {channel_username}")
         entity = await client.get_entity(channel_username)
@@ -36,7 +37,7 @@ async def scrape_channel(client, channel_username):
         
         messages_data = []
 
-        async for message in client.iter_messages(entity, limit=100):
+        async for message in client.iter_messages(entity, limit=limit):
             # Extract basic data
             msg_id = message.id
             payload = {
@@ -63,14 +64,22 @@ async def scrape_channel(client, channel_username):
         with open(f"{json_dir}/{channel_username}.json", 'w', encoding='utf-8') as f:
             json.dump(messages_data, f, ensure_ascii=False, indent=4)
             
-    except Exception as e:
-        logging.error(f"Error in {channel_username}: {str(e)}")
+    except Exception as exc:
+        logging.error(f"Error in {channel_username}: {str(exc)}")
 
-async def main():
+async def main(channels, limit):
     async with TelegramClient('scraping_session', API_ID, API_HASH) as client:
-        for channel in CHANNELS:
-            await scrape_channel(client, channel)
+        for channel in channels:
+            await scrape_channel(client, channel, limit)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Scrape public Telegram channels into a raw data lake.")
+    parser.add_argument("--channels", nargs="+", default=CHANNELS)
+    parser.add_argument("--limit", type=int, default=100)
+    return parser.parse_args()
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(main())
+    args = parse_args()
+    asyncio.run(main(args.channels, args.limit))
